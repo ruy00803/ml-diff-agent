@@ -4,6 +4,10 @@
 
 差分そのものを LLM に推測させるのではなく、Python 標準ライブラリで正確に抽出した差分だけを Gemini に渡します。これにより、決定論的な差分抽出と、LLM が得意とする意味の整理を分離しています。
 
+## Demo
+
+![ML Experiment Diff Agentの実行画面](docs/app-screenshot.png)
+
 > [!IMPORTANT]
 > 本アプリはコードの変更内容と考えられる影響を整理するための支援ツールです。モデルのスコア改善や性能向上を自動判定するものではありません。実際の効果は、再学習と評価指標の確認によって検証してください。
 
@@ -72,7 +76,7 @@ diff_code/
 
 ```bash
 git clone https://github.com/ruy00803/ml-diff-agent.git
-cd diff_code
+cd ml-diff-agent
 ```
 
 ### 2. 仮想環境を作成して依存関係をインストール
