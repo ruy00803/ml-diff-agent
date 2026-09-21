@@ -48,4 +48,4 @@ def preprocess_diff(diff_text: str) -> tuple[str, bool]:
     if not processed_diff:
         processed_diff = diff_text[:MAX_DIFF_CHARS]
 
-    return processed_diff, True
+    return processed_diff[:MAX_DIFF_CHARS], True

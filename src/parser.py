@@ -15,16 +15,25 @@ def parse_notebook_file(file_bytes: bytes) -> str:
     """
     notebook = json.loads(file_bytes.decode("utf-8"))
 
+    if not isinstance(notebook, dict) or not isinstance(notebook.get("cells"), list):
+        raise ValueError("Notebookのcellsが不正です")
+
     code_cells = []
 
     for cell in notebook.get("cells", []):
+        if not isinstance(cell, dict):
+            raise ValueError("Notebookのセルが不正です")
         if cell.get("cell_type") == "code":
             source = cell.get("source", [])
 
             if isinstance(source, list):
+                if not all(isinstance(line, str) for line in source):
+                    raise ValueError("コードセルのsourceが不正です")
                 code = "".join(source)
-            else:
+            elif isinstance(source, str):
                 code = source
+            else:
+                raise ValueError("コードセルのsourceが不正です")
 
             code_cells.append(code)
 

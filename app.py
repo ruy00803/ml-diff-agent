@@ -1,77 +1,63 @@
+import os
+
 import streamlit as st
 
 from src.parser import parse_file
 from src.diff_engine import generate_diff
 from src.diff_preprocessor import preprocess_diff
-from src.llm_client import analyze_diff
+from src.llm_client import AnalysisError, analyze_diff
 
 
-st.title("ML Experiment Diff Agent")
-
-st.write(
-    "Kaggleや機械学習実験のコード差分を比較し、"
-    "変更内容をAIが整理します。"
-)
-
-
-col1, col2 = st.columns(2)
-
-with col1:
-    base_file = st.file_uploader(
-        "Base Experiment",
-        type=["py", "ipynb"]
-    )
-
-with col2:
-    target_file = st.file_uploader(
-        "Target Experiment",
-        type=["py", "ipynb"]
-    )
+def setting(name):
+    value = os.getenv(name)
+    if value:
+        return value
+    try:
+        return st.secrets.get(name)
+    except FileNotFoundError:
+        return None
 
 
-if st.button("実験差分を解析"):
+def main():
+    st.title("ML Experiment Diff Agent")
+    st.write("機械学習実験のコード差分を比較し、変更内容をAIが整理します。")
+    col1, col2 = st.columns(2)
+    with col1:
+        base = st.file_uploader("Base Experiment", type=["py", "ipynb"])
+    with col2:
+        target = st.file_uploader("Target Experiment", type=["py", "ipynb"])
+    if base is None or target is None:
+        st.info("BaseとTargetの両方のファイルを選択してください。")
+        return
+    try:
+        diff = generate_diff(parse_file(base.name, base.getvalue()),
+                             parse_file(target.name, target.getvalue()))
+    except (ValueError, UnicodeError):
+        st.error("ファイルを読み込めません。UTF-8のPythonファイル、または正しいNotebookを選択してください。")
+        return
+    if not diff:
+        st.success("コード上の差分はありません。")
+        return
+    processed, trimmed = preprocess_diff(diff)
+    with st.expander("Raw Diff（全差分）", expanded=True):
+        st.code(diff, language="diff")
+    if trimmed:
+        st.warning("差分が大きいため、AI分析では主要な変更箇所を優先しています。")
+    with st.expander("Geminiへ送信する差分"):
+        st.code(processed, language="diff")
+    st.caption("「AIで分析」を押すと、上記の送信対象の差分をGemini APIへ送信します。")
+    if st.button("AIで分析", type="primary"):
+        try:
+            with st.spinner("差分を分析しています…"):
+                report = analyze_diff(processed, api_key=setting("GEMINI_API_KEY"),
+                                      model=setting("GEMINI_MODEL"))
+            st.subheader("分析結果")
+            st.markdown(report)
+        except AnalysisError as exc:
+            st.error(str(exc))
+        except Exception:
+            st.error("予期しないエラーが発生しました。設定とインストール環境を確認してください。")
 
-    if base_file is None or target_file is None:
-        st.warning("BaseとTargetの両方のファイルを選択してください。")
 
-    else:
-        base_code = parse_file(
-            base_file.name,
-            base_file.getvalue()
-        )
-
-        target_code = parse_file(
-            target_file.name,
-            target_file.getvalue()
-        )
-
-        diff_text = generate_diff(
-            base_code,
-            target_code
-        )
-
-        if not diff_text:
-            st.success("コード上の差分はありません。")
-
-        else:
-            processed_diff, is_trimmed = preprocess_diff(diff_text)
-
-            if is_trimmed:
-                st.warning(
-                    "差分が大きいため、AI分析では主要な変更箇所を優先しています。"
-                )
-
-            try:
-                report = analyze_diff(processed_diff)
-
-                st.subheader("📊 分析結果")
-                st.markdown(report)
-
-            except Exception:
-                st.error(
-                    "AI分析に失敗しました。"
-                    "Gemini APIが一時的に混雑している可能性があります。"
-                )
-
-            with st.expander("Raw Diff"):
-                st.code(diff_text, language="diff")
+if __name__ == "__main__":
+    main()

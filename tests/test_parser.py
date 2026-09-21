@@ -36,3 +36,13 @@ def test_parse_file_py():
     result = parse_file("sample.py", file_bytes)
 
     assert result == "x = 10"
+
+import pytest
+
+
+@pytest.mark.parametrize("data", [b'[]', b'{}', b'{"cells": null}',
+    b'{"cells": [null]}', b'{"cells": [{"cell_type":"code","source":[1]}]}',
+    b'{"cells": [{"cell_type":"code","source":null}]}', b'invalid'])
+def test_invalid_notebook(data):
+    with pytest.raises(ValueError):
+        parse_notebook_file(data)

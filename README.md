@@ -6,7 +6,9 @@
 
 ## Demo
 
-![ML Experiment Diff Agentの実行画面](docs/app-screenshot.png)
+![ML Experiment Diff Agentの実行画面（旧UI）](docs/app-screenshot.png)
+
+※ 画像は旧UIです。現在は差分を先に表示し、「AIで分析」を押したときだけ送信します。
 
 > [!IMPORTANT]
 > 本アプリはコードの変更内容と考えられる影響を整理するための支援ツールです。モデルのスコア改善や性能向上を自動判定するものではありません。実際の効果は、再学習と評価指標の確認によって検証してください。
@@ -56,7 +58,7 @@ flowchart LR
 ## ディレクトリ構成
 
 ```text
-diff_code/
+ml-diff-agent/
 ├── app.py                         # Streamlit UIと処理の呼び出し
 ├── prompts/
 │   └── diff_analysis_prompt.txt   # Geminiへ渡す分析指示
@@ -78,6 +80,8 @@ diff_code/
 git clone https://github.com/ruy00803/ml-diff-agent.git
 cd ml-diff-agent
 ```
+
+フォルダ名は任意です。`diff_code`などの名前で保存している場合は、そのフォルダへ移動してください。
 
 ### 2. 仮想環境を作成して依存関係をインストール
 
@@ -124,6 +128,12 @@ $env:GEMINI_API_KEY="your-api-key"
 
 `.streamlit/secrets.toml` と `.env` は `.gitignore` に含まれています。API キーをソースコードやコミットへ含めないでください。
 
+モデルは既定で`gemini-3.6-flash`を使用します。環境変数またはSecretsの`GEMINI_MODEL`で変更できます（環境変数を優先）。利用可能なモデルは[Google公式ドキュメント](https://ai.google.dev/gemini-api/docs/models/gemini-3.6-flash)を確認してください。
+
+```toml
+GEMINI_MODEL = "gemini-3.6-flash"
+```
+
 ## 起動方法
 
 プロジェクトのルートディレクトリで実行します。
@@ -132,9 +142,13 @@ $env:GEMINI_API_KEY="your-api-key"
 python -m streamlit run app.py
 ```
 
-ブラウザで表示された画面に Base と Target のファイルをアップロードし、「実験差分を解析」を選択します。API に送信されるのは、解析対象のファイル全体ではなく、抽出および必要に応じて前処理された Diff です。
+ブラウザで表示された画面に Base と Target のファイルをアップロードします。Raw Diffと「Geminiへ送信する差分」を確認し、「AIで分析」を選択します。差分の表示だけではAPIを呼び出しません。API に送信されるのは、解析対象のファイル全体ではなく、抽出および必要に応じて前処理された Diff です。
 
 動作確認には `sample/base_example.py` と `sample/target_example.py` を利用できます。
+
+## サンプルの変更内容
+
+付属サンプルでは`learning_rate`が`0.05 → 0.01`、`max_depth`が`6 → 8`に変わり、`lag_1 = 1`が追加されます。分析ではこれらの変更と検証事項を整理します。学習処理や評価結果がないため、精度が改善したとは判断できません。LLMの出力表現は実行ごとに変わります。
 
 ## テスト
 
@@ -142,7 +156,7 @@ python -m streamlit run app.py
 python -m pytest -q
 ```
 
-現在のテストは、ファイル解析、Diff 生成、Diff 前処理を対象としています。Streamlit UI と Gemini API の実通信は自動テストの対象外です。
+テストはファイル解析、Diff生成、前処理、APIエラー処理、Streamlitの差分プレビューと送信操作を対象としています。Gemini APIは模擬応答で検証し、実通信は自動テストの対象外です。GitHub ActionsでもPython 3.13で実行します。
 
 ## 現在の制約
 
